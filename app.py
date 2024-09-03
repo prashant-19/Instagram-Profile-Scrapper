@@ -20,24 +20,24 @@ def download_profile(username):
             if not filename.startswith(username):
                 continue
             if filename.endswith('.jpg') or filename.endswith('.mp4'):
-                shutil.move(filename, os.path.join(folder_name , filename))
+                shutil.move(filename, os.path.join(folder_name, filename))
 
         zip_filename = folder_name + '.zip'
         with zipfile.ZipFile(zip_filename, 'w') as zip_file:
             for filename in os.listdir(folder_name):
                 extension = os.path.splitext(filename)[1].lower()
-                if extension in ['.mp4', '.jpg' , '.jpeg' , 'png']:
-                    zip_file.write(os.path.join(folder_name , filename), arcname= filename)
+                if extension in ['.mp4', '.jpg', '.jpeg', 'png']:
+                    zip_file.write(os.path.join(folder_name, filename), arcname=filename)
 
         shutil.rmtree(folder_name)
 
-        return zip_filename
+        return zip_filename, None
     except instaloader.exceptions.LoginRequiredException:
         return None, "This profile requires login. Please try a different profile."
     except instaloader.exceptions.ProfileNotExistsException:
         return None, "The profile does not exist. Please check the username."
     except Exception as e:
-        return None, f"An error occurred: Please try a different profile or check the username."                  
+        return None, f"An error occurred: {str(e)}"           
 
 @app.route('/')
 def home():
