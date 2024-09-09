@@ -5,77 +5,170 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Profile Downloader</title>
     <style>
-        /* Center the content on the page */
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
-
-        h1 {
-            font-size: 2rem;
-            color: #333;
+        .container {
+            max-width: 600px;
+            margin: auto;
         }
-
-        form {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
+        .tabs {
+            overflow: hidden;
+            background-color: #f1f1f1;
+            border-radius: 5px;
         }
-
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        input[type="text"] {
-            width: 90%;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-
-        button {
-            background-color: #007bff;
-            color: #fff;
-            padding: 10px 20px;
+        .tab-button {
+            background-color: #ddd;
             border: none;
-            border-radius: 4px;
-            font-size: 1rem;
+            outline: none;
+            padding: 14px 16px;
             cursor: pointer;
+            float: left;
+            border-radius: 5px 5px 0 0;
         }
-
-        button:hover {
-            background-color: #0056b3;
+        .tab-button.active {
+            background-color: #ccc;
         }
-
-        p {
-            font-size: 1rem;
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 0 0 5px 5px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .error {
             color: red;
+        }
+        .success {
+            color: green;
         }
     </style>
 </head>
 <body>
-    <div>        
-        <form method="POST" action="/download">
-            <label for="username_or_url">Username or URL:</label>
-            <input type="text" id="username_or_url" name="username_or_url" placeholder="Enter Username or URL here" required>
-            <button type="submit">Download</button>
-        </form>
-        
-        {% if error_message %}
-            <p>{{ error_message }}</p>
-        {% endif %}
+    <div class="container">
+        <h1>Instagram Profile Downloader</h1>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab('singleProfile')">Single Profile</button>
+            <button class="tab-button" onclick="openTab('csvUpload')">Upload CSV</button>
+        </div>
+
+        <!-- Single Profile Tab -->
+        <div id="singleProfile" class="tab-content active">
+            <h2>Download Single Profile</h2>
+            <form id="singleProfileForm" method="POST" action="/download">
+                <label for="username_or_url">Enter Instagram Username or URL:</label><br>
+                <input type="text" id="username_or_url" name="username_or_url" required><br><br>
+                <input type="submit" value="Download Profile">
+            </form>
+        </div>
+
+        <!-- CSV Upload Tab -->
+        <div id="csvUpload" class="tab-content">
+            <h2>Upload CSV File</h2>
+            <form id="csvUploadForm" method="POST" enctype="multipart/form-data" action="/upload_csv">
+                <label for="file">Upload CSV File with Usernames:</label><br>
+                <input type="file" id="file" name="file" accept=".csv" required><br><br>
+                <input type="submit" value="Upload CSV">
+            </form>
+        </div>
+
+        <!-- Status and logs -->
+        <div class="status" id="statusMessage">
+            <!-- Status messages will appear here -->
+        </div>
     </div>
+
+    <script>
+        function openTab(tabId) {
+            // Hide all tabs
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => tab.classList.remove('active'));
+
+            // Deactivate all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => button.classList.remove('active'));
+
+            // Show the selected tab and activate the corresponding button
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.tab-button[onclick="openTab('${tabId}')"]`).classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusMessageDiv = document.getElementById('statusMessage');
+
+            // Handle single profile download form
+            document.getElementById('singleProfileForm').addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const formData = new FormData(event.target);
+                const response = await fetch(event.target.action, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1].replace(/"/g, '');
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const text = await response.text();
+                    statusMessageDiv.innerHTML = `<span class="error">Error: ${text}</span>`;
+                }
+            });
+
+            // Handle CSV upload form
+            document.getElementById('csvUploadForm').addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const formData = new FormData(event.target);
+                const response = await fetch(event.target.action, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'combined_profiles.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const text = await response.text();
+                    statusMessageDiv.innerHTML = `<span class="error">Error: ${text}</span>`;
+                }
+            });
+
+            // Fetch status message regularly
+            setInterval(async () => {
+                const response = await fetch('/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusMessageDiv.innerHTML = `<span class="success">${data.status}</span>`;
+                }
+            }, 5000);
+        });
+    </script>
 </body>
 </html>
